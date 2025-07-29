@@ -44,7 +44,7 @@ const app = express();
 app.set('view engine', 'ejs');
 app.use(express.static(ASSET_FOLDER));  // Serve media from assets/ for previews
 app.use(express.static('public'));      // For static HTML/JS/CSS (if needed)
-app.use(express.urlencoded({extended: true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // --- GLOBALS ---
@@ -89,14 +89,17 @@ app.get('/api/contacts', (req, res) => {
   res.json(contactsData);
 });
 
-// API: List uploaded media in assets/ (for UI display with previews)
+// API: List uploaded media in assets/ (for UI display with previews) - FIXED: case-insensitive extension check
 app.get('/api/media', (req, res) => {
   fs.readdir(ASSET_FOLDER, (err, files) => {
     if (err) {
       console.error('Error listing media files:', err);
       return res.json([]);
     }
-    const filtered = files.filter(f => f.endsWith('.jpg') || f.endsWith('.png') || f.endsWith('.mp4') || f.endsWith('.mp3') || f.endsWith('.ogg'));
+    const filtered = files.filter(f => {
+      const lowerF = f.toLowerCase();
+      return lowerF.endsWith('.jpg') || lowerF.endsWith('.jpeg') || lowerF.endsWith('.png') || lowerF.endsWith('.mp4') || lowerF.endsWith('.mp3') || lowerF.endsWith('.ogg');
+    });
     console.log(`API: Returning ${filtered.length} media files from assets`);
     res.json(filtered);
   });
@@ -113,17 +116,18 @@ app.post('/api/upload-media', upload.array('mediaFiles', 20), (req, res) => {
   res.json({ ok: true, files: uploadedFiles });
 });
 
-// API: Delete a single media file from assets
-app.delete('/api/media/:file', (req, res) => {
+// API: Delete a single media file from assets (FIXED: use path.resolve for fullPath to make it absolute, ensuring the security check works correctly without false positives on valid files)
+app.delete('/api/delete-media/:file', (req, res) => {
   const filename = req.params.file;
-  const fullPath = path.join(ASSET_FOLDER, filename);
-  
-  // Security check: ensure the file is within assets folder
-  if (!fullPath.startsWith(path.resolve(ASSET_FOLDER))) {
+  const fullPath = path.resolve(ASSET_FOLDER, filename);
+  const assetDir = path.resolve(ASSET_FOLDER);
+
+  // Security check: ensure the resolved fullPath starts with the asset directory to prevent path traversal
+  if (!fullPath.startsWith(assetDir)) {
     console.error('Security violation: attempted path traversal');
     return res.status(400).json({ ok: false, message: 'Invalid file path' });
   }
-  
+
   fs.unlink(fullPath, (err) => {
     if (err) {
       console.error('Delete error:', err);

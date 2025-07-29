@@ -6,7 +6,9 @@ const ffmpeg = require('fluent-ffmpeg');
 const { promisify } = require('util');
 const { sleep } = require('./utils');
 
+
 const unlinkAsync = promisify(fs.unlink);
+
 
 // Generate image thumbnail buffer using sharp
 async function generateImageThumbnail(imagePath) {
@@ -21,10 +23,12 @@ async function generateImageThumbnail(imagePath) {
   }
 }
 
+
 // Generate video thumbnail buffer using ffmpeg
 function generateVideoThumbnail(videoPath) {
   return new Promise((resolve, reject) => {
     const tempThumbPath = path.join(__dirname, 'temp_thumbnail.jpg');
+
 
     ffmpeg(videoPath)
       .on('error', err => {
@@ -50,16 +54,18 @@ function generateVideoThumbnail(videoPath) {
   });
 }
 
+
 // Helper to build Baileys media message payload with thumbnails
 async function buildPayload(ext, mediaPath, addCaption, caption) {
   if (['.jpg', '.jpeg', '.png'].includes(ext)) {
     const thumb = await generateImageThumbnail(mediaPath);
-    return { 
-      image: fs.readFileSync(mediaPath), 
+    return {
+      image: fs.readFileSync(mediaPath),
       caption: addCaption ? caption : undefined,
       jpegThumbnail: thumb || undefined,
     };
   }
+
 
   if (ext === '.mp4') {
     let thumb = null;
@@ -78,6 +84,7 @@ async function buildPayload(ext, mediaPath, addCaption, caption) {
     };
   }
 
+
   if (ext === '.mp3' || ext === '.ogg') {
     // For audios, no thumbnail and no caption
     return {
@@ -85,14 +92,16 @@ async function buildPayload(ext, mediaPath, addCaption, caption) {
       mimetype: 'audio/ogg',
     };
   }
-  
+
   return null; // unsupported file type
 }
+
 
 // Main sending function: sends text + all media in assets to all contacts
 async function sendMessages(sock, contacts, formatMessage, mode = 'all') {
   // mode: 'text', 'media', 'all'
   const mediaDir = path.join(__dirname, 'assets');
+
 
   let mediaFiles = [];
   try {
@@ -103,13 +112,16 @@ async function sendMessages(sock, contacts, formatMessage, mode = 'all') {
     console.error('Error reading assets folder:', err.message);
   }
 
+
   console.log(`Media files found: ${mediaFiles.join(', ')}`);
+
 
   let successCount = 0;
   let failureCount = 0;
   const successNumbers = [];
   const failedNumbers = [];
   const details = [];
+
 
   for (const row of contacts) {
     let number;
@@ -124,13 +136,17 @@ async function sendMessages(sock, contacts, formatMessage, mode = 'all') {
       continue;
     }
 
+
     const jid = `${number}@s.whatsapp.net`;
+
 
     const text = formatMessage(row);
     console.log(`Sending to ${number} (mode: ${mode}): ${text.length > 50 ? text.substr(0, 50) + '...' : text}`);
 
+
     let allSent = true;
     let captionAdded = false;
+
 
     if (mode === 'text' || (mode === 'all' && mediaFiles.length === 0)) {
       try {
@@ -143,6 +159,7 @@ async function sendMessages(sock, contacts, formatMessage, mode = 'all') {
       }
     }
 
+
     if (mode === 'media' || mode === 'all') {
       if (mediaFiles.length === 0) {
         console.log(`No media to send for ${number} in mode ${mode}`);
@@ -152,6 +169,7 @@ async function sendMessages(sock, contacts, formatMessage, mode = 'all') {
           const file = mediaFiles[i];
           const ext = path.extname(file).toLowerCase();
           const mediaPath = path.join(mediaDir, file);
+
 
           let payload = null;
           try {
@@ -164,6 +182,7 @@ async function sendMessages(sock, contacts, formatMessage, mode = 'all') {
             console.warn(`Skipping unsupported media type for ${file}`);
             continue;
           }
+
 
           try {
             await sock.sendMessage(jid, payload);
@@ -179,6 +198,7 @@ async function sendMessages(sock, contacts, formatMessage, mode = 'all') {
       }
     }
 
+
     if (allSent) {
       successCount++;
       successNumbers.push(number);
@@ -187,11 +207,14 @@ async function sendMessages(sock, contacts, formatMessage, mode = 'all') {
       failedNumbers.push(number);
     }
 
+
     await sleep(1500 + Math.floor(Math.random() * 1000)); // Delay between contacts
   }
+
 
   console.log(`Sending complete: Success=${successCount}, Failed=${failureCount}`);
   return { successCount, failureCount, successNumbers, failedNumbers, details };
 }
+
 
 module.exports = { sendMessages };
