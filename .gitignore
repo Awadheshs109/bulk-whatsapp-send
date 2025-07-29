@@ -8,8 +8,7 @@ tmp/
 .temp
 package-lock.json
 
-Uploaded media (assets folder can be large, ignore if not needed in repo)
-assets/*
+
 
 OS-specific files
 .DS_Store
