@@ -1,273 +1,191 @@
+<!-- Full updated index.ejs (Complete and updated version with two send buttons for text-only and media-only, media previews, delete icons, and toasts) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>WhatsApp Bulk Sender</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     #dropzone {
-      border: 2px dashed #bbb;
-      border-radius: 8px;
-      padding: 18px;
-      text-align: center;
-      color: #666;
-      margin-bottom: 15px;
-      cursor: pointer;
+      border: 2px dashed #bbb; border-radius:8px; padding:18px; text-align: center; color:#666; margin-bottom:15px; cursor:pointer;
       background: #f8f8f8;
     }
-    #dropzone.dragover {
-      background: #eaf7ea;
-    }
-    .toast-container {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      z-index: 9999;
-    }
-    #mediaList .card {
-      margin: 5px;
-      position: relative;
-      width: 150px;
-    }
-    #mediaList .card img,
-    #mediaList .card video {
-      max-width: 100%;
-      height: auto;
-      display: block;
-    }
-    .delete-btn {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background-color: rgba(255, 0, 0, 0.8);
-      border: none;
-      color: white;
-      font-weight: bold;
-      font-size: 20px;
-      line-height: 20px;
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      cursor: pointer;
-      opacity: 0.7;
-      transition: opacity 0.2s ease;
-      z-index: 10;
-    }
-    .delete-btn:hover {
-      opacity: 1;
-    }
+    #dropzone.dragover { background: #eaf7ea; }
+    .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; }
+    #mediaList .card { margin: 5px; }
+    #mediaList img, #mediaList video { max-width: 100%; height: auto; }
+    .delete-btn { position: absolute; top: 0; right: 0; z-index: 1; background: red; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; text-align: center; cursor: pointer; }
   </style>
 </head>
-<body class="container py-4">
+<body class="container py-5">
 
-  <h2>WhatsApp Bulk Sender</h2>
+  <h2 class="mb-3">WhatsApp Bulk Message Sender</h2>
 
-  <form id="sendForm" class="mb-3">
-    <label for="messageTemplate" class="form-label">Message Template (use <code>{name}</code>)</label>
-    <textarea id="messageTemplate" class="form-control" name="messageTemplate" rows="5" required>
+  <!-- Send Message Form with two buttons -->
+  <form id="sendForm" class="mb-4">
+    <div class="mb-3">
+      <label class="form-label">Message Template (use <code>{name}</code>):</label>
+      <textarea class="form-control" name="messageTemplate" id="messageTemplate" rows="5" required>
 Hi {name},
 
-Your message here.
+
+Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+
 
 Thanks,
-</textarea>
-    <button type="submit" class="btn btn-success mt-2">Send Messages</button>
+Awadhesh Sharma
+      </textarea>
+    </div>
+    <button class="btn btn-primary" type="submit" data-mode="text">Send Text Only</button>
+    <button class="btn btn-success" type="submit" data-mode="media">Send Media Only</button>
   </form>
 
-  <div id="dropzone" class="mb-3">
-    Drag & drop media files here (jpg, png, mp4, mp3, ogg, max 20MB each), or click to select.
-    <input id="mediaUpload" type="file" accept=".jpg,.jpeg,.png,.mp4,.mp3,.ogg" multiple style="display:none" />
+  <!-- Multi-Image/Video Drag & Drop Upload -->
+  <div id="dropzone" class="mb-4">
+    Drag & drop <b>.jpg</b> or <b>.mp4</b> files here (max 20MB/each), or click to select files
+    <input type="file" id="mediaFiles" name="mediaFiles" accept=".jpg,.mp4" multiple style="display:none;">
+    <p class="small text-muted">Note: Media is sent from assets folder to all contacts independently of Excel.</p>
   </div>
 
-  <div id="mediaList" class="d-flex flex-wrap mb-3"></div>
+  <!-- Uploaded Media Display with Previews -->
+  <h4>Uploaded Media</h4>
+  <div id="mediaList" class="d-flex flex-wrap mb-4"></div>
 
-  <h4>Contacts <small class="text-muted">(auto-refresh every 30s)</small></h4>
+  <h4>Contacts List <small class="text-muted">(auto-refreshes every 30 sec)</small></h4>
   <table class="table table-striped" id="contactsTable">
-    <thead><tr><th>Name</th><th>Number</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Number</th>
+      </tr>
+    </thead>
     <tbody>
-      <% contacts.forEach(c => { %>
+      <% for (let c of contacts) { %>
         <tr>
-          <td><%= c.Name %></td>
-          <td><%= c.Number %></td>
+          <td><%= c.Name || '' %></td>
+          <td><%= c.Number || '' %></td>
         </tr>
-      <% }) %>
+      <% } %>
     </tbody>
   </table>
 
+  <!-- Toast notifications -->
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    const dropzone = document.getElementById('dropzone');
-    const mediaList = document.getElementById('mediaList');
-    const mediaUpload = document.getElementById('mediaUpload');
-    const toastContainer = document.getElementById('toastContainer');
-
-    // Show toasts
-    function showToast(message, type = 'info') {
-      const id = 'toast' + Math.random().toString(36).slice(2);
-      const html = `
-        <div class="toast align-items-center text-bg-${type} border-0 mb-2" id="${id}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="2500">
-          <div class="d-flex">
-            <div class="toast-body">${message}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-          </div>
-        </div>`;
-      toastContainer.insertAdjacentHTML('beforeend', html);
-      const toastEl = document.getElementById(id);
-      new bootstrap.Toast(toastEl).show();
-      toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
-    }
-
-    // Load media list and show with delete button
-    async function loadMedia() {
-      try {
-        const res = await fetch('/api/media');
-        const files = await res.json();
-        if (files.length === 0) {
-          mediaList.innerHTML = '<p class="text-muted">No media files uploaded</p>';
-          return;
+    // --- Contacts table auto-refresh ---
+    function refreshContactsTable(){
+      fetch('/api/contacts').then(r=>r.json()).then(list=>{
+        let html = '';
+        for (let c of list) {
+          html += `<tr>
+            <td>${c.Name||''}</td>
+            <td>${c.Number||''}</td>
+          </tr>`;
         }
-        mediaList.innerHTML = files.map(file => {
-          const isVideo = file.toLowerCase().endsWith('.mp4');
-          return `
-            <div class="card position-relative me-2 mb-2" style="width: 150px;">
-              <button class="delete-btn" data-file="${file}" title="Delete ${file}">&times;</button>
-              <div class="card-body p-2 text-center">
-                ${isVideo
-                  ? `<video src="${file}" controls width="100" preload="metadata"></video>`
-                  : `<img src="${file}" alt="${file}" width="100" />`}
-                <p class="small text-truncate mt-1 mb-0" title="${file}">${file}</p>
-              </div>
-            </div>`;
-        }).join('');
-      } catch (e) {
-        showToast('Failed to load media files', 'danger');
-      }
+        document.querySelector('#contactsTable tbody').innerHTML = html;
+      });
     }
+    setInterval(refreshContactsTable, 30000);
 
-    // Delete media file handler
-    mediaList.addEventListener('click', async (evt) => {
-      if (!evt.target.classList.contains('delete-btn')) return;
-      const file = evt.target.dataset.file;
-      if (!confirm(`Delete '${file}'?`)) return;
-
-      try {
-        const res = await fetch(`/api/media/${encodeURIComponent(file)}`, { method: 'DELETE' });
-        const json = await res.json();
-        if (json.ok) {
-          showToast(`Deleted: ${file}`, 'success');
-          loadMedia();
-        } else {
-          showToast(`Failed to delete: ${json.message || 'Server error'}`, 'danger');
-        }
-      } catch {
-        showToast('Failed delete request', 'danger');
-      }
-    });
-
-    // Handle file uploads
-    dropzone.addEventListener('click', () => mediaUpload.click());
-    dropzone.addEventListener('dragover', e => {
+    // --- Send Message (handle two buttons with modes) ---
+    document.getElementById('sendForm').onsubmit = async function(e){
       e.preventDefault();
-      dropzone.classList.add('dragover');
-    });
-    dropzone.addEventListener('dragleave', e => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-    });
-    dropzone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      mediaUpload.files = e.dataTransfer.files;
-      uploadFiles(e.dataTransfer.files);
-    });
-
-    mediaUpload.addEventListener('change', () => uploadFiles(mediaUpload.files));
-
-    async function uploadFiles(files) {
-      if (!files.length) return;
-
-      const filtered = [...files].filter(file =>
-        ['image/jpeg', 'image/png', 'video/mp4'].includes(file.type) &&
-        file.size <= 20 * 1024 * 1024
-      );
-
-      if (filtered.length !== files.length) {
-        showToast('Only JPG, PNG, MP4 files ≤20MB allowed', 'danger');
-        return;
-      }
-
-      const formData = new FormData();
-      filtered.forEach(file => formData.append('mediaFiles', file));
-
-      try {
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const json = await res.json();
-        if (json.ok) {
-          showToast(`${json.files.length} file(s) uploaded`, 'success');
-          loadMedia();
-        } else {
-          showToast(`Upload failed: ${json.message || ''}`, 'danger');
-        }
-      } catch {
-        showToast('Upload failed', 'danger');
-      }
-    }
-
-    // Handle sending messages
-    document.getElementById('sendForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      const textarea = document.getElementById('messageTemplate');
-      const btn = e.target.querySelector('button[type="submit"]');
+      const messageTemplate = document.getElementById('messageTemplate').value;
+      const btn = e.submitter; // the button that was clicked
+      const mode = btn.dataset.mode; // 'text' or 'media'
       btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/send-messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messageTemplate: textarea.value }),
-        });
-        const json = await res.json();
-        if (json.ok) {
-          if (json.successNumbers.length) {
-            json.successNumbers.forEach(num => showToast(`Sent to: ${num}`, 'success'));
-          }
-          if (json.failedNumbers.length) {
-            json.failedNumbers.forEach(num => showToast(`Failed: ${num}`, 'danger'));
-          }
+      fetch('/api/send-messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ messageTemplate, mode })
+      })
+      .then(r=>r.json())
+      .then(data=>{
+        if (data.ok) {
+          (data.successNumbers || []).forEach(num=>{
+            showToast(`Message sent (${num}) successfully!`, 'success');
+          });
+          (data.failedNumbers || []).forEach(num=>{
+            showToast(`Failed to send message to (${num})`, 'danger');
+          });
         } else {
-          showToast(`Send failed: ${json.message || ''}`, 'danger');
+          showToast("Sending failed: " + (data.message || ""), 'danger');
         }
-      } catch {
-        showToast('Send request failed', 'danger');
-      } finally {
         btn.disabled = false;
-      }
-    });
+      })
+      .catch(err=>{
+        btn.disabled = false;
+        showToast("Sending failed: "+err.message, 'danger');
+      });
+    };
 
-    // Initial loads
-    loadMedia();
-
-    // Refresh contacts table every 5s
-    async function refreshContacts() {
-      try {
-        const res = await fetch('/api/contacts');
-        const contacts = await res.json();
-        const tbody = document.querySelector('#contactsTable tbody');
-        tbody.innerHTML = contacts.map(c =>
-          `<tr><td>${c.Name || ''}</td><td>${c.Number || ''}</td></tr>`
-        ).join('');
-      } catch {
-        showToast('Failed to refresh contacts', 'danger');
-      }
+    // --- Bootstrap Toast Helper ---
+    function showToast(msg, type='info') {
+      const toastContainer = document.getElementById('toastContainer');
+      const id = 'toast' + String(Math.random()).slice(2);
+      let html = `<div class="toast align-items-center text-bg-${type} border-0 mb-2" id="${id}" role="alert" aria-live="polite" data-bs-delay="2000">
+        <div class="d-flex"><div class="toast-body">${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+      </div>`;
+      toastContainer.insertAdjacentHTML('beforeend', html);
+      let toastEl = document.getElementById(id);
+      let toastObj = new bootstrap.Toast(toastEl);
+      toastObj.show();
+      toastEl.addEventListener('hidden.bs.toast', ()=>toastEl.remove());
     }
-    refreshContacts();
-    setInterval(refreshContacts, 5000);
 
+    // --- Media drag-drop + multi-upload (supports .jpg and .mp4) ---
+    const dz = document.getElementById('dropzone');
+    const fileInput = document.getElementById('mediaFiles');
+    dz.addEventListener('click', ()=>fileInput.click());
+    dz.addEventListener('dragover',e=>{e.preventDefault(); dz.classList.add('dragover');});
+    dz.addEventListener('dragleave',e=>dz.classList.remove('dragover'));
+    dz.addEventListener('drop',function(e){
+      e.preventDefault(); dz.classList.remove('dragover');
+      fileInput.files = e.dataTransfer.files;
+      uploadFiles(fileInput.files);
+    });
+    fileInput.addEventListener('change', ()=>uploadFiles(fileInput.files));
+    function uploadFiles(files){
+      if(!files || files.length == 0) return;
+      let validFiles = [...files].filter(f=> (f.type == 'image/jpeg' || f.type == 'video/mp4') && f.size < 20e6);
+      if(validFiles.length != files.length){
+        showToast('Only JPG/MP4 files under 20MB are allowed','danger'); return;
+      }
+      let data = new FormData();
+      validFiles.forEach(f=>data.append('mediaFiles', f));
+      fetch('/api/upload-media', {method:'POST',body:data})
+        .then(r=>r.json())
+        .then(obj=>{
+          if(obj.ok) {
+            showToast(`${obj.files.length} file(s) uploaded!`, 'success');
+            refreshMediaList();  // Refresh uploaded media display
+          } else showToast('Upload failed: '+(obj.message||''),'danger');
+        })
+        .catch(()=>showToast("Upload error!",'danger'));
+    }
+
+    // --- Display Uploaded Media with Previews (AJAX refresh) ---
+    function refreshMediaList(){
+      fetch('/api/media').then(r=>r.json()).then(files=>{
+        let html = '';
+        files.forEach(f=>{
+          const isVideo = f.endsWith('.mp4');
+          html += `<div class="card" style="width: 150px;">
+            <div class="card-body p-1 text-center">
+              ${isVideo ? `<video src="${f}" controls width="100"></video>` : `<img src="${f}" alt="${f}" width="100">`}
+              <p class="card-text small">${f}</p>
+            </div>
+          </div>`;
+        });
+        document.getElementById('mediaList').innerHTML = html;
+      });
+    }
+    // Initial load and refresh every 30s
+    refreshMediaList();
+    setInterval(refreshMediaList, 30000);
   </script>
 </body>
 </html>
