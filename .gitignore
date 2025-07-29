@@ -1,0 +1,27 @@
+Node.js dependencies
+node_modules/
+
+Authentication and session data (sensitive, don't commit)
+auth_info_baileys/
+
+tmp/
+.temp
+package-lock.json
+
+Uploaded media (assets folder can be large, ignore if not needed in repo)
+assets/*
+
+OS-specific files
+.DS_Store
+Thumbs.db
+
+Editor/IDE files
+.vscode/
+.idea/
+
+Build/dist files (if any)
+dist/
+build/
+
+Environment variables
+.env
