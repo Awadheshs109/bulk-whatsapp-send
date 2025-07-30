@@ -6,7 +6,6 @@ auth_info_baileys/
 
 tmp/
 .temp
-package-lock.json
 
 
 
